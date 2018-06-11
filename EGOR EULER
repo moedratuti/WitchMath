@@ -1,0 +1,224 @@
+#include<iostream>
+#include<omp.h>
+#include<ctime>
+#include<cstdlib>
+#include<fstream>
+#include<math.h>
+#include<chrono>
+#include<random>
+
+using namespace std;
+
+void print_matrix(double **matrix, int n){ //печать матрицы
+    for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+            cout<<matrix[i][j]<<"  ";
+        }
+        cout<<endl;
+    }
+}
+double *sumv(double *arr_1, double *arr_2, int n){
+    double *arr_3=new double[n];
+    for(int i=0; i<n; i++){
+        arr_3[i]=0;
+    }
+    for(int i=0; i<n; i++){
+        arr_3[i]=arr_1[i]+arr_2[i];
+    }
+    return arr_3;
+}
+double **summ(double **matrix_1, double **matrix_2, int n){
+    double **matrix_3=new double *[n];
+    for(int i=0; i<n; i++){
+        matrix_3[i]=new double[n];
+    }
+    for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+            matrix_3[i][j]=matrix_1[i][j]+matrix_2[i][j];
+        }
+    }
+    return matrix_3;
+}
+double **umno(double **matrix_1, double **matrix_2, int n){ //умножение 2х матриц nxn
+    double **matrix_3=new double *[n];
+    for(int i=0; i<n; i++){
+        matrix_3[i]=new double[n];
+    }
+    for (int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+            matrix_3[i][j]=0;
+        }
+    }
+    for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+                for(int k=0; k<n; k++){
+                    matrix_3[i][j]=matrix_3[i][j]+matrix_1[i][k]*matrix_2[k][j];
+                }
+        }
+    }
+    return matrix_3;
+}
+double *umnov(double **matrix, double *arr, int n){
+    double *newarr=new double[n];
+    for(int i=0; i<n; i++){
+        newarr[i]=0;
+    }
+    for(int i=0; i<n; i++){
+        for(int j=0; j<n; j++){
+            newarr[i]=newarr[i]+matrix[i][j]*arr[j];
+        }
+    }
+    return newarr;
+}
+
+
+double *new_time(double **A, double *G, double *g, int N, double dt){
+    double **one=new double *[N];
+    for(int i=0; i<N; i++){
+        one[i]=new double[N];
+    }
+    for(int i=0; i<N; i++){
+        for(int j=0; j<N; j++){
+            one[i][j]=0;
+        }
+        one[i][i]=1;
+    }
+   return umnov(A, sumv(G, g, N), N);
+}
+
+
+int main(){
+    ofstream dots("Euler2.txt");
+    double dt=0.03;
+    double tau=1;
+    double t=2*tau;
+    double l=1;
+    double dx=0.01;
+    int N=l/dx;
+
+    double **L=new double *[N];
+    for(int i=0; i<N; i++){
+        L[i]=new double[N];
+    }
+    double **adder=new double *[N];
+    for(int i=0; i<N; i++){
+        adder[i]=new double[N];
+    }
+    double **onem=new double *[N];
+    for(int i=0; i<N; i++){
+        onem[i]=new double[N];
+    }
+    for(int i=0; i<N; i++){
+        for(int j=0; j<N; j++){
+            onem[i][j]=0;
+        }
+        onem[i][i]=1;
+    }
+
+    double **S=new double *[N];
+    for(int i=0; i<N; i++){
+        S[i]=new double[N];
+    }
+
+    for(int i=0; i<N; i++){
+        for(int j=0; j<N; j++){
+            S[i][j]=0;
+        }
+    }
+
+    double **additional=new double *[N];
+    for(int i=0; i<N; i++){
+        additional[i]=new double[N];
+    }
+
+    L[0][0]=1-dt/(dx*dx); //задаем матрицу, которую я написал в беседе
+    additional[0][0]=L[0][0];
+    adder[0][0]=L[0][0];
+    L[0][1]=dt/(dx*dx);
+    additional[0][1]=L[0][1];
+    adder[0][1]=L[0][1];
+    L[N-1][N-2]=dt/(dx*dx);
+    additional[N-1][N-2]=L[N-1][N-2];
+    adder[N-1][N-2]=L[N-1][N-2];
+    L[N-1][N-1]=1+dt*((-4)*l-3*dx)/(dx*dx*(2*l+dx));
+    additional[N-1][N-1]=L[N-1][N-1];
+    adder[N-1][N-1]=L[N-1][N-1];
+    for(int j=2; j<N; j++){
+        L[0][j]=0;
+        additional[0][j]=L[0][j];
+        adder[0][j]=L[0][j];
+        L[j][0]=L[0][j];
+        additional[j][0]=L[j][0];
+        adder[j][0]=L[j][0];
+    }
+    for(int i=1, j; i<N-1; i++){
+        j=i-1;
+        L[i][j]=dt/(dx*dx);
+        additional[i][j]=L[i][j];
+        adder[i][j]=L[i][j];
+        L[i][j+1]=1-2*dt/(dx*dx);
+        additional[i][j+1]=L[i][j+1];
+        adder[i][j+1]=L[i][j+1];
+        L[i][j+2]=L[i][j];
+        additional[i][j+2]=L[i][j+2];
+        adder[i][j+2]=L[i][j+2];
+        while(j<N-3){
+            L[i][j+3]=0;
+            additional[i][j+3]=L[i][j+3];
+            adder[i][j+3]=L[i][j+3];
+            L[j+3][i]=L[i][j+3];
+            additional[j+3][i]=L[j+3][i];
+            adder[j+3][i]=L[j+3][i];
+            j++;
+        }
+    }
+    double *G=new double[N];
+    G[0]=(-dt)/(l*dx); //учли умножение на h
+    for(int i=1; i<N; i++){
+        G[i]=0;
+    }
+
+    int degree=t/dt; //степень k, в которую возводим L для нахождения v(k*dt)
+    cout<<"degree= "<<degree<<endl;
+    double *v0=new double[N];
+    double *v=new double[N];
+    double *x=new double[N];
+    double *u=new double[N];
+    double *g=new double[N];
+    for(int i=0; i<N; i++){
+        x[i]=(i+0.5)*dx;
+    }
+    for(int i=0; i<N; ++i){ //начальные условия в зависимости от x
+        if (abs(x[i]-l/3)<l/10) v0[i]=3-x[i]/l;
+            else v0[i]=2-x[i]/l;
+    }
+    for(int i=0; i<degree; i++){
+        v0=new_time(L, G, v0, N, dt);
+    }
+    for(int i=0; i<N; i++){
+        dots<<v0[i]<<endl;
+    }
+    delete []v0;
+    delete []v;
+    delete []x;
+    delete []G;
+    delete []u;
+    delete []g;
+    for(int i=0; i<N; i++){
+        delete []L[N];
+    }
+    for(int i=0; i<N; i++){
+        delete []additional[N];
+    }
+    for(int i=0; i<N; i++){
+        delete []onem[N];
+    }
+    for(int i=0; i<N; i++){
+        delete []adder[N];
+    }
+    for(int i=0; i<N; i++){
+        delete []S[N];
+    }
+    dots.close();
+return 0;
+}
